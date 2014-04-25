@@ -1,6 +1,6 @@
 ;;; org-review.el --- schedule reviews for Org entries
 ;;
-;; Copyright 2007-2014 Free Software Foundation, Inc.
+;; Copyright 2014 Free Software Foundation, Inc.
 ;;
 ;; Author: Alan Schmitt
 ;; Version: 0.1
@@ -44,9 +44,9 @@
 ;; `org-review-insert-last-review' may be used for this.
 ;;
 ;; Example use.
-;; 
-;; 1 - To display the things to review.
-;; 
+;;
+;; 1 - To display the things to review in the agenda.
+;;
 ;;   (setq org-agenda-custom-commands (quote ( ... ("R" "Review
 ;;         projects" tags-todo "-CANCELLED/"
 ;;         ((org-agenda-overriding-header "Reviews Scheduled")
@@ -58,51 +58,6 @@
 ;;
 ;;   (add-hook 'org-agenda-mode-hook (lambda () (local-set-key (kbd "C-c
 ;;        C-r") 'org-review-insert-last-review)))
-;;
-;; 3 - To find projects or single tasks with no last review date.
-;; 
-;; To find the projects (tasks with sub tasks) or single tasks that have
-;; no review, you can use the following: (some is taken from
-;; http://doc.norang.ca/org-mode.html#Projects)
-;; 
-;;  (tags-todo "-CANCELLED/" ((org-agenda-overriding-header "Missing
-;;Last Review") (org-agenda-skip-function
-;;'as/skip-non-project-non-single-no-review)))
-;; 
-;;  (defun bh/is-project-p () "Any task with a todo keyword subtask"
-;;(save-restriction (widen) (let ((has-subtask) (subtree-end
-;;(save-excursion (org-end-of-subtree t))) (is-a-task (member (nth
-;;2 (org-heading-components)) org-todo-keywords-1))) (save-excursion
-;;(forward-line 1) (while (and (not has-subtask) (< (point) subtree-end)
-;;(re-search-forward "^\*+ " subtree-end t)) (when (member
-;;(org-get-todo-state) org-todo-keywords-1) (setq has-subtask t)))) (and
-;;is-a-task has-subtask))))
-;; 
-;;  (defun bh/is-project-subtree-p () "Any task with a todo keyword that
-;;     is in a project subtree. Callers of this function already widen
-;;     the buffer view." (let ((task (save-excursion
-;;     (org-back-to-heading 'invisible-ok) (point)))) (save-excursion
-;;     (bh/find-project-task) (if (equal (point) task) nil t))))
-;; 
-;;   (defun bh/is-task-p () "Any task with a todo keyword and no
-;;subtask" (save-restriction (widen) (let ((has-subtask) (subtree-end
-;;(save-excursion (org-end-of-subtree t))) (is-a-task (member (nth
-;;2 (org-heading-components)) org-todo-keywords-1))) (save-excursion
-;;(forward-line 1) (while (and (not has-subtask) (< (point) subtree-end)
-;;(re-search-forward "^\*+ " subtree-end t)) (when (member
-;;(org-get-todo-state) org-todo-keywords-1) (setq has-subtask t)))) (and
-;;is-a-task (not has-subtask)))))
-;; 
-;; (defun as/skip-non-project-non-single-no-review () "Skip non
-;;     projects, non single tasks, and those without last review
-;;     marker." (save-restriction (widen) (let ((next-headline
-;;     (save-excursion (or (outline-next-heading) (point-max))))) (cond
-;;     ((bh/is-project-p) (when (org-review-last-review-prop)
-;;     next-headline)) ((and (bh/is-task-p) (not
-;;     (bh/is-project-subtree-p))) (when
-;;     (org-review-last-review-prop) next-headline)) (t
-;;     next-headline)))))
-;; 
 
 ;;; Code:
 
@@ -113,9 +68,11 @@
   :tag "Org Review Schedule"
   :group 'org)
 
-(defcustom org-review-inactive-timestamps t
-  "Insert inactive timestamps for last review properties."
-  :type 'boolean
+(defcustom org-review-timestamp-format 'naked
+  "Timestamp format for last review properties."
+  :type '(radio (const naked)
+                (const inactive)
+                (const active))
   :group 'org-review)
 
 (defcustom org-review-last-property-name "LAST_REVIEW"
@@ -163,12 +120,11 @@ If there is no last review date, return nil.
 If there is no review delay period, use `org-review-delay'."
   (let* ((lr-prop org-review-last-property-name)
          (lp (org-entry-get (point) lr-prop)))
-    (when lp 
+    (when lp
       (let* ((dr-prop org-review-delay-property-name)
-             (dr (or (org-entry-get (point) dr-prop t) 
+             (dr (or (org-entry-get (point) dr-prop t)
                      org-review-delay))
-             (nt (org-review-last-planned lp dr))
-             )
+             (nt (org-review-last-planned lp dr)))
         (if (time-less-p nt (current-time)) nt)))))
 
 (defun org-review-insert-last-review (&optional prompt)
@@ -185,9 +141,12 @@ prompt the user for the date."
                (org-agenda-error))
          (point))
        org-review-last-property-name
-       (if org-review-inactive-timestamps
-           (concat "[" (substring ts 1 -1) "]")
-         ts)))))
+       (cond
+        ((equal org-review-timestamp-format 'inactive)
+         (concat "[" (substring ts 1 -1) "]"))
+        ((equal org-review-timestamp-format 'active)
+         ts)
+        (t (substring ts 1 -1)))))))
 
 (defun org-review-skip ()
   "Skip entries that are not scheduled to be reviewed."
@@ -196,19 +155,17 @@ prompt the user for the date."
     (let ((next-headline (save-excursion (or (outline-next-heading)
                                              (point-max)))))
       (cond
-       ((org-review-toreview-p)
-        nil)
-       (t
-        next-headline)))))
+       ((org-review-toreview-p) nil)
+       (t next-headline)))))
 
 (defun org-review-compare (a b)
   "Compares the date of scheduled review for the two agenda
 entries, to be used with `org-agenda-cmp-user-defined'. Returns
 +1 if A has been scheduled for longer and -1 otherwise."
-  (let* ((ma (or (get-text-property 1 'org-marker a)
-                 (get-text-property 1 'org-hd-marker a)))
-         (mb (or (get-text-property 1 'org-marker b)
-                 (get-text-property 1 'org-hd-marker b)))
+  (let* ((ma (or (get-text-property (point-min) 'org-marker a)
+                 (get-text-property (point-min) 'org-hd-marker a)))
+         (mb (or (get-text-property (point-min) 'org-marker b)
+                 (get-text-property (point-min) 'org-hd-marker b)))
          (pal (org-entry-get ma org-review-last-property-name))
          (pad (or (org-entry-get ma org-review-delay-property-name t)
                   org-review-delay))
