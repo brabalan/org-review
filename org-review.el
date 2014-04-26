@@ -1,6 +1,6 @@
 ;;; org-review.el --- schedule reviews for Org entries
 ;;
-;; Copyright 2014 Free Software Foundation, Inc.
+;; Copyright 2014 Alan Schmitt
 ;;
 ;; Author: Alan Schmitt
 ;; Version: 0.1
@@ -33,7 +33,7 @@
 ;; is, allowing to set it for whole subtrees.
 ;;
 ;; Checking of review dates is done through an agenda view, using the
-;; `org-review-skip' skipping function. This function is based
+;; `org-review-agenda-skip' skipping function. This function is based
 ;; on `org-review-toreview-p', that returns `nil' if no review
 ;; is necessary (no review planned or it happened recently), otherwise
 ;; it returns the date the review was first necessary (LAST_REVIEW +
@@ -50,7 +50,7 @@
 ;;   (setq org-agenda-custom-commands (quote ( ... ("R" "Review
 ;;         projects" tags-todo "-CANCELLED/"
 ;;         ((org-agenda-overriding-header "Reviews Scheduled")
-;;         (org-agenda-skip-function 'org-review-skip)
+;;         (org-agenda-skip-function 'org-review-agenda-skip)
 ;;         (org-agenda-cmp-user-defined 'org-review-compare)
 ;;         (org-agenda-sorting-strategy '(user-defined-down)))) ... )))
 ;;
@@ -101,15 +101,14 @@ subtree above, this delay is used."
   "Computes the next planned review, given the LAST review
   date (in string format) and the review DELAY (in string
   format)."
-  (let* ((lt (org-read-date nil t last))
-         (ct (current-time)))
+  (let ((lt (org-read-date nil t last))
+        (ct (current-time)))
     (time-add lt (time-subtract (org-read-date nil t delay) ct))))
 
 (defun org-review-last-review-prop ()
   "Return the value of the last review property of the current
 headline."
-  (let ((lr-prop org-review-last-property-name))
-    (org-entry-get (point) lr-prop)))
+  (org-entry-get (point) org-review-last-property-name))
 
 (defun org-review-toreview-p ()
   "Check if the entry at point should be marked for review.
@@ -118,14 +117,12 @@ the number of days between the past planned review date and today.
 
 If there is no last review date, return nil.
 If there is no review delay period, use `org-review-delay'."
-  (let* ((lr-prop org-review-last-property-name)
-         (lp (org-entry-get (point) lr-prop)))
+  (let ((lp (org-review-last-review-prop)))
     (when lp
-      (let* ((dr-prop org-review-delay-property-name)
-             (dr (or (org-entry-get (point) dr-prop t)
+      (let* ((dr (or (org-entry-get (point) org-review-delay-property-name t)
                      org-review-delay))
              (nt (org-review-last-planned lp dr)))
-        (if (time-less-p nt (current-time)) nt)))))
+        (and (time-less-p nt (current-time)) nt)))))
 
 (defun org-review-insert-last-review (&optional prompt)
   "Insert the current date as last review. If prefix argument:
@@ -134,29 +131,27 @@ prompt the user for the date."
   (let* ((ts (if prompt
                 (concat "<" (org-read-date) ">")
               (format-time-string (car org-time-stamp-formats)))))
-    (save-excursion
-      (org-entry-put
-       (if (equal (buffer-name) org-agenda-buffer-name)
-           (or (org-get-at-bol 'org-marker)
-               (org-agenda-error))
-         (point))
-       org-review-last-property-name
-       (cond
-        ((equal org-review-timestamp-format 'inactive)
-         (concat "[" (substring ts 1 -1) "]"))
-        ((equal org-review-timestamp-format 'active)
-         ts)
-        (t (substring ts 1 -1)))))))
+    (org-entry-put
+     (if (equal (buffer-name) org-agenda-buffer-name)
+         (or (org-get-at-bol 'org-marker)
+             (org-agenda-error))
+       (point))
+     org-review-last-property-name
+     (cond
+      ((eq org-review-timestamp-format 'inactive)
+       (concat "[" (substring ts 1 -1) "]"))
+      ((eq org-review-timestamp-format 'active)
+       ts)
+      (t (substring ts 1 -1))))))
 
-(defun org-review-skip ()
-  "Skip entries that are not scheduled to be reviewed."
-  (save-restriction
-    (widen)
-    (let ((next-headline (save-excursion (or (outline-next-heading)
-                                             (point-max)))))
-      (cond
-       ((org-review-toreview-p) nil)
-       (t next-headline)))))
+(defun org-review-agenda-skip ()
+  "To be used as an argument of `org-agenda-skip-function' to
+skip entries that are not scheduled to be reviewed. This function
+does not move the point; it returns `nil' if the entry is to be
+kept, and the position to continue the search otherwise."
+  (and (not (org-review-toreview-p))
+       (org-with-wide-buffer (or (outline-next-heading) (point-max)))))
+
 
 (defun org-review-compare (a b)
   "Compares the date of scheduled review for the two agenda
