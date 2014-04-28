@@ -1,3 +1,51 @@
-TITLE: org-review
+#+TITLE: org-review
 
 Track when you have done a review in org mode.
+
+* Installation
+
+1. Copy ~org-review.el~ to a path known to emacs.
+2. Add the following to your emacs configuration file.
+   #+begin_src emacs-lisp
+     (require 'org-review)
+   #+end_src
+3. Configure an agenda view that shows the projects that are available
+   for review. You could for instance add the following in your emacs
+   configuration file.
+   #+begin_src emacs-lisp
+     (add-to-list 'org-agenda-custom-commands
+                  '("R" "Review projects" tags-todo "-CANCELLED/"
+                    ((org-agenda-overriding-header "Reviews Scheduled")
+                     (org-agenda-skip-function 'org-review-agenda-skip)
+                     (org-agenda-cmp-user-defined 'org-review-compare)
+                     (org-agenda-sorting-strategy '(user-defined-down)))))
+   #+end_src
+4. If you want to mark a project reviewed when you are in an agenda
+   view, you can do so by assigning a key binding for
+   the ~org-review-insert-last-review~ function.
+   #+begin_src emacs-lisp
+     (add-hook 'org-agenda-mode-hook
+               (lambda ()
+                 (local-set-key (kbd "C-c C-r")
+                                'org-review-insert-last-review)))
+   #+end_src
+
+* How it works
+
+Entries will be scheduled for review only if their ~LAST_REVIEW~
+property is set. The next review date is computed from the ~LAST_REVIEW~
+property and the ~REVIEW_DELAY~ period, such as ~+1m~. If ~REVIEW_DELAY~
+is absent, a default period is used. Note that the ~LAST_REVIEW~
+property is not considered as inherited, but ~REVIEW_DELAY~ is, allowing
+to set it for whole subtrees.
+
+Checking of review dates is done through an agenda view, using
+the ~org-review-agenda-skip~ skipping function. This function is based
+on ~org-review-toreview-p~, that returns ~nil~ if no review is necessary
+(no review planned or it happened recently), otherwise it returns the
+date the review was first necessary (~LAST_REVIEW + REVIEW_DELAY~ if it
+is in the past).
+
+When the entry is marked as reviewed, the ~LAST_REVIEW date~ is set to
+the current date. The function ~org-review-insert-last-review~ may be
+used for this.

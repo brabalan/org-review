@@ -47,8 +47,8 @@
 ;;
 ;; 1 - To display the things to review in the agenda.
 ;;
-;;   (setq org-agenda-custom-commands (quote ( ... ("R" "Review
-;;         projects" tags-todo "-CANCELLED/"
+;;   (setq org-agenda-custom-commands (quote ( ...
+;;        ("R" "Review projects" tags-todo "-CANCELLED/"
 ;;         ((org-agenda-overriding-header "Reviews Scheduled")
 ;;         (org-agenda-skip-function 'org-review-agenda-skip)
 ;;         (org-agenda-cmp-user-defined 'org-review-compare)
