@@ -157,10 +157,10 @@ kept, and the position to continue the search otherwise."
   "Compares the date of scheduled review for the two agenda
 entries, to be used with `org-agenda-cmp-user-defined'. Returns
 +1 if A has been scheduled for longer and -1 otherwise."
-  (let* ((ma (or (get-text-property (point-min) 'org-marker a)
-                 (get-text-property (point-min) 'org-hd-marker a)))
-         (mb (or (get-text-property (point-min) 'org-marker b)
-                 (get-text-property (point-min) 'org-hd-marker b)))
+  (let* ((ma (or (get-text-property 0 'org-marker a)
+                 (get-text-property 0 'org-hd-marker a)))
+         (mb (or (get-text-property 0 'org-marker b)
+                 (get-text-property 0 'org-hd-marker b)))
          (pal (org-entry-get ma org-review-last-property-name))
          (pad (or (org-entry-get ma org-review-delay-property-name t)
                   org-review-delay))
