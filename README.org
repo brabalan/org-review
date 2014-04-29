@@ -13,12 +13,12 @@ Track when you have done a review in org mode.
    for review. You could for instance add the following in your emacs
    configuration file.
    #+begin_src emacs-lisp
-     (add-to-list 'org-agenda-custom-commands
-                  '("R" "Review projects" tags-todo "-CANCELLED/"
-                    ((org-agenda-overriding-header "Reviews Scheduled")
-                     (org-agenda-skip-function 'org-review-agenda-skip)
-                     (org-agenda-cmp-user-defined 'org-review-compare)
-                     (org-agenda-sorting-strategy '(user-defined-down)))))
+     (setq org-agenda-custom-commands
+           '(("R" "Review projects" tags-todo "-CANCELLED/"
+              ((org-agenda-overriding-header "Reviews Scheduled")
+               (org-agenda-skip-function 'org-review-agenda-skip)
+               (org-agenda-cmp-user-defined 'org-review-compare)
+               (org-agenda-sorting-strategy '(user-defined-down))))))
    #+end_src
 4. If you want to mark a project reviewed when you are in an agenda
    view, you can do so by assigning a key binding for
