@@ -40,6 +40,11 @@ as ~+1m~. If ~REVIEW_DELAY~ is absent, a default period is used. Note
 that the ~LAST_REVIEW~ property is not considered as inherited,
 but ~REVIEW_DELAY~ is, allowing to set it for whole subtrees.
 
+To set these properties, you may use the ~org-set-property~ command
+(bound to ~C-c C-x p~ by default). For the ~NEXT_REVIEW~ property,
+a command ~org-review-insert-next-review~ is provided, that prompts
+for a date and inserts it.
+
 Checking of review dates is done through an agenda view, using
 the ~org-review-agenda-skip~ skipping function. This function is based
 on ~org-review-toreview-p~, that returns ~nil~ if no review is
