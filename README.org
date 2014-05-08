@@ -32,20 +32,26 @@ Track when you have done a review in org mode.
 
 * How it works
 
-Entries will be scheduled for review only if their ~LAST_REVIEW~
-property is set. The next review date is computed from the ~LAST_REVIEW~
-property and the ~REVIEW_DELAY~ period, such as ~+1m~. If ~REVIEW_DELAY~
-is absent, a default period is used. Note that the ~LAST_REVIEW~
-property is not considered as inherited, but ~REVIEW_DELAY~ is, allowing
-to set it for whole subtrees.
+Entries will be scheduled for review if their ~NEXT_REVIEW~ or
+their ~LAST_REVIEW~ property is set. The next review date is
+the ~NEXT_REVIEW~ date, if it is present, otherwise it is computed
+from the ~LAST_REVIEW~ property and the ~REVIEW_DELAY~ period, such
+as ~+1m~. If ~REVIEW_DELAY~ is absent, a default period is used. Note
+that the ~LAST_REVIEW~ property is not considered as inherited,
+but ~REVIEW_DELAY~ is, allowing to set it for whole subtrees.
 
 Checking of review dates is done through an agenda view, using
 the ~org-review-agenda-skip~ skipping function. This function is based
-on ~org-review-toreview-p~, that returns ~nil~ if no review is necessary
-(no review planned or it happened recently), otherwise it returns the
-date the review was first necessary (~LAST_REVIEW + REVIEW_DELAY~ if it
-is in the past).
+on ~org-review-toreview-p~, that returns ~nil~ if no review is
+necessary (no review planned or it happened recently), otherwise it
+returns the date the review was first necessary (~NEXT_REVIEW~,
+or ~LAST_REVIEW + REVIEW_DELAY~, if it is in the past).
 
-When the entry is marked as reviewed, the ~LAST_REVIEW date~ is set to
-the current date. The function ~org-review-insert-last-review~ may be
-used for this.
+To mark an entry as reviewed, use the
+function ~org-review-insert-last-review~ to set the ~LAST_REVIEW~ date
+to the current date. If ~org-review-sets-next-date~ is set (which is
+the default), this function also computes the date of the next review
+and inserts it as ~NEXT_REVIEW~.
+
+Several options, such as the format of the time stamps, may be set
+using the ~customize-group~ command for the ~org-review~ group.

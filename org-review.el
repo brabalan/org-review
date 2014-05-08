@@ -3,7 +3,7 @@
 ;; Copyright 2014 Alan Schmitt
 ;;
 ;; Author: Alan Schmitt
-;; Version: 0.1
+;; Version: 0.2
 ;; Keywords: org review
 
 ;; This file is not part of GNU Emacs.
@@ -25,23 +25,26 @@
 ;;
 ;; This allows to schedule reviews of org entries.
 ;;
-;; Entries will be scheduled for review only if their LAST_REVIEW
-;; property is set. The next review date is computed from the
-;; LAST_REVIEW property and the REVIEW_DELAY period, such as "+1m". If
-;; REVIEW_DELAY is absent, a default period is used. Note that the
-;; LAST_REVIEW property is not considered as inherited, but REVIEW_DELAY
-;; is, allowing to set it for whole subtrees.
+;; Entries will be scheduled for review if their NEXT_REVIEW or their
+;; LAST_REVIEW property is set. The next review date is the
+;; NEXT_REVIEW date, if it is present, otherwise it is computed from
+;; the LAST_REVIEW property and the REVIEW_DELAY period, such as
+;; "+1m". If REVIEW_DELAY is absent, a default period is used. Note
+;; that the LAST_REVIEW property is not considered as inherited, but
+;; REVIEW_DELAY is, allowing to set it for whole subtrees.
 ;;
 ;; Checking of review dates is done through an agenda view, using the
 ;; `org-review-agenda-skip' skipping function. This function is based
-;; on `org-review-toreview-p', that returns `nil' if no review
-;; is necessary (no review planned or it happened recently), otherwise
-;; it returns the date the review was first necessary (LAST_REVIEW +
-;; REVIEW_DELAY if it is in the past).
+;; on `org-review-toreview-p', that returns `nil' if no review is
+;; necessary (no review planned or it happened recently), otherwise it
+;; returns the date the review was first necessary (NEXT_REVIEW, or
+;; LAST_REVIEW + REVIEW_DELAY, if it is in the past).
 ;;
-;; When the entry is marked as reviewed, the LAST_REVIEW date is set to
-;; the current date. The function
-;; `org-review-insert-last-review' may be used for this.
+;; To mark an entry as reviewed, use the function
+;; `org-review-insert-last-review' to set the LAST_REVIEW date to the
+;; current date. If `org-review-sets-next-date' is set (which is the
+;; default), this function also computes the date of the next review
+;; and inserts it as NEXT_REVIEW.
 ;;
 ;; Example use.
 ;;
@@ -59,6 +62,13 @@
 ;;   (add-hook 'org-agenda-mode-hook (lambda () (local-set-key (kbd "C-c
 ;;        C-r") 'org-review-insert-last-review)))
 
+;;; Changes
+;;
+;; 2014-05-08: added the ability to specify next review dates
+
+;; TODO
+;; - be able to specify a function to run when marking an item reviewed
+
 ;;; Code:
 
 ;;; User variables:
@@ -68,7 +78,14 @@
   :tag "Org Review Schedule"
   :group 'org)
 
-(defcustom org-review-timestamp-format 'naked
+(defcustom org-review-last-timestamp-format 'naked
+  "Timestamp format for last review properties."
+  :type '(radio (const naked)
+                (const inactive)
+                (const active))
+  :group 'org-review)
+
+(defcustom org-review-next-timestamp-format 'naked
   "Timestamp format for last review properties."
   :type '(radio (const naked)
                 (const inactive)
@@ -85,6 +102,11 @@
   :type 'string
   :group 'org-review)
 
+(defcustom org-review-next-property-name "NEXT_REVIEW"
+  "The name of the property for setting the date of the next review."
+  :type 'string
+  :group 'org-review)
+
 (defcustom org-review-delay "+1m"
   "Time span between the date of last review and the next one.
 The default value for this variable (\"+1m\") means that entries
@@ -93,6 +115,13 @@ will be marked for review one month after their last review.
 If the review delay cannot be retrieved from the entry or the
 subtree above, this delay is used."
   :type 'string
+  :group 'org-review)
+
+(defcustom org-review-sets-next-date t
+  "Indicates whether marking a project as reviewed automatically
+  sets the next NEXT_REVIEW according to the current date and
+  REVIEW_DELAY."
+  :type 'boolean
   :group 'org-review)
 
 ;;; Functions:
@@ -105,44 +134,92 @@ subtree above, this delay is used."
         (ct (current-time)))
     (time-add lt (time-subtract (org-read-date nil t delay) ct))))
 
-(defun org-review-last-review-prop ()
-  "Return the value of the last review property of the current
-headline."
-  (org-entry-get (point) org-review-last-property-name))
+(defun org-review-last-review-prop (&optional pos)
+  "Return the value of the last review property of the headline
+at position POS, or the current headline if POS is not given."
+  (org-entry-get (or pos (point)) org-review-last-property-name))
 
-(defun org-review-toreview-p ()
+(defun org-review-next-review-prop (&optional pos)
+  "Return the value of the review date property of the headline
+at position POS, or the current headline if POS is not given."
+  (org-entry-get (or pos (point)) org-review-next-property-name))
+
+(defun org-review-review-delay-prop (&optional pos)
+  "Return the value of the review delay property of the headline
+at position POS, or the current headline if POS is not given,
+considering inherited properties."
+  (org-entry-get (or pos (point)) org-review-delay-property-name t))
+
+(defun org-review-toreview-p (&optional pos)
   "Check if the entry at point should be marked for review.
-Return nil if the entry does not need to be reviewed. Otherwise return
-the number of days between the past planned review date and today.
+Return nil if the entry does not need to be reviewed. Otherwise
+return the date when the entry was first scheduled to be
+reviewed.
 
-If there is no last review date, return nil.
-If there is no review delay period, use `org-review-delay'."
-  (let ((lp (org-review-last-review-prop)))
-    (when lp
-      (let* ((dr (or (org-entry-get (point) org-review-delay-property-name t)
-                     org-review-delay))
-             (nt (org-review-last-planned lp dr)))
-        (and (time-less-p nt (current-time)) nt)))))
+If there is a next review date, consider it. Otherwise, if there
+is a last review date, use it to compute the date of the next
+review (adding the value of the review delay property, or
+`org-review-delay' if there is no review delay property). If
+there is no next review date and no last review date, return
+nil."
+  (let* ((lp (org-review-last-review-prop pos))
+	 (np (org-review-next-review-prop pos))
+	 (nextreview
+	  (cond
+	   (np (org-read-date nil t np))
+	   (lp (org-review-last-planned
+		lp
+		(or (org-review-review-delay-prop pos)
+		    org-review-delay)))
+	   (t nil))))
+    (and nextreview
+	 (time-less-p nextreview (current-time))
+	 nextreview)))
+
+(defun org-review-insert-date (propname fmt date)
+  "Insert the DATE under property PROPNAME, in the format
+specified by FMT."
+  (org-entry-put
+   (if (equal (buffer-name) org-agenda-buffer-name)
+       (or (org-get-at-bol 'org-marker)
+	   (org-agenda-error))
+     (point))
+   propname
+   (cond
+    ((eq fmt 'inactive)
+     (concat "[" (substring date 1 -1) "]"))
+    ((eq fmt 'active) date)
+    (t (substring date 1 -1)))))
 
 (defun org-review-insert-last-review (&optional prompt)
   "Insert the current date as last review. If prefix argument:
-prompt the user for the date."
+prompt the user for the date. If `org-review-sets-next-date' is
+set to `t', also insert a next review date."
   (interactive "P")
-  (let* ((ts (if prompt
+  (let ((ts (if prompt
                 (concat "<" (org-read-date) ">")
               (format-time-string (car org-time-stamp-formats)))))
-    (org-entry-put
-     (if (equal (buffer-name) org-agenda-buffer-name)
-         (or (org-get-at-bol 'org-marker)
-             (org-agenda-error))
-       (point))
-     org-review-last-property-name
-     (cond
-      ((eq org-review-timestamp-format 'inactive)
-       (concat "[" (substring ts 1 -1) "]"))
-      ((eq org-review-timestamp-format 'active)
-       ts)
-      (t (substring ts 1 -1))))))
+    (org-review-insert-date org-review-last-property-name
+			    org-review-last-timestamp-format
+			    ts)
+    (when org-review-sets-next-date
+      (org-review-insert-date
+       org-review-next-property-name
+       org-review-next-timestamp-format
+       (format-time-string (car org-time-stamp-formats)
+			   (org-review-last-planned 
+			    ts
+			    (or (org-review-review-delay-prop)
+				org-review-delay)))))))
+
+(defun org-review-insert-next-review ()
+  "Prompt the user for the date of the next review, and insert
+it as a property of the headline."
+  (interactive)
+  (let ((ts (concat "<" (org-read-date) ">")))
+    (org-review-insert-date org-review-next-property-name
+			    org-review-next-timestamp-format
+			    ts)))
 
 (defun org-review-agenda-skip ()
   "To be used as an argument of `org-agenda-skip-function' to
@@ -152,7 +229,6 @@ kept, and the position to continue the search otherwise."
   (and (not (org-review-toreview-p))
        (org-with-wide-buffer (or (outline-next-heading) (point-max)))))
 
-
 (defun org-review-compare (a b)
   "Compares the date of scheduled review for the two agenda
 entries, to be used with `org-agenda-cmp-user-defined'. Returns
@@ -161,15 +237,9 @@ entries, to be used with `org-agenda-cmp-user-defined'. Returns
                  (get-text-property 0 'org-hd-marker a)))
          (mb (or (get-text-property 0 'org-marker b)
                  (get-text-property 0 'org-hd-marker b)))
-         (pal (org-entry-get ma org-review-last-property-name))
-         (pad (or (org-entry-get ma org-review-delay-property-name t)
-                  org-review-delay))
-         (pbl (org-entry-get mb org-review-last-property-name))
-         (pbd (or (org-entry-get mb org-review-delay-property-name t)
-                  org-review-delay))
-         (sa (org-review-last-planned pal pad))
-         (sb (org-review-last-planned pbl pbd)))
-    (if (time-less-p sa sb) 1 -1)))
+	 (ra (org-review-toreview-p ma))
+	 (rb (org-review-toreview-p mb)))
+    (if (time-less-p ra rb) 1 -1)))
 
 (provide 'org-review)
 
