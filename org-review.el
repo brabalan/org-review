@@ -209,7 +209,11 @@ set to `t', also insert a next review date."
        (format-time-string (car org-time-stamp-formats)
 			   (org-review-last-planned 
 			    ts
-			    (or (org-review-review-delay-prop)
+			    (or (org-review-review-delay-prop
+				 (if (equal (buffer-name) org-agenda-buffer-name)
+				     (or (org-get-at-bol 'org-marker)
+					 (org-agenda-error))
+				   (point)))
 				org-review-delay)))))))
 
 (defun org-review-insert-next-review ()
