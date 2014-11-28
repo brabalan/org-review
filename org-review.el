@@ -180,7 +180,9 @@ nil."
   "Insert the DATE under property PROPNAME, in the format
 specified by FMT."
   (org-entry-put
-   (if (equal (buffer-name) org-agenda-buffer-name)
+   ;; The name of the buffer for agendas is hardcoded … there is
+   ;; probably a better way to test if a buffer is an agenda
+   (if (string-prefix-p "*Org Agenda" (buffer-name))
        (or (org-get-at-bol 'org-marker)
 	   (org-agenda-error))
      (point))
