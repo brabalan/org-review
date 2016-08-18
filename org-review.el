@@ -1,9 +1,9 @@
 ;;; org-review.el --- schedule reviews for Org entries
 ;;
-;; Copyright 2014 Alan Schmitt
+;; Copyright 2016 Alan Schmitt
 ;;
 ;; Author: Alan Schmitt
-;; Version: 0.2
+;; Version: 0.3
 ;; Keywords: org review
 
 ;; This file is not part of GNU Emacs.
@@ -64,6 +64,7 @@
 
 ;;; Changes
 ;;
+;; 2016-08-18: better detection of org-agenda buffers
 ;; 2014-05-08: added the ability to specify next review dates
 
 ;; TODO
