@@ -72,6 +72,9 @@
 
 ;;; Code:
 
+(require 'org)
+(require 'org-agenda)
+
 ;;; User variables:
 
 (defgroup org-review nil
