@@ -1,8 +1,8 @@
 ;;; org-review.el --- schedule reviews for Org entries
 ;;
-;; Copyright 2016 Alan Schmitt
+;; Copyright (C) 2016 Alan Schmitt
 ;;
-;; Author: Alan Schmitt
+;; Author: Alan Schmitt <alan.schmitt@polytechnique.org>
 ;; Version: 0.3
 ;; Keywords: org review
 
