@@ -180,9 +180,7 @@ nil."
   "Insert the DATE under property PROPNAME, in the format
 specified by FMT."
   (org-entry-put
-   ;; The name of the buffer for agendas is hardcoded … there is
-   ;; probably a better way to test if a buffer is an agenda
-   (if (string-prefix-p "*Org Agenda" (buffer-name))
+   (if (equal major-mode 'org-agenda-mode)
        (or (org-get-at-bol 'org-marker)
 	   (org-agenda-error))
      (point))
@@ -208,15 +206,16 @@ set to `t', also insert a next review date."
       (org-review-insert-date
        org-review-next-property-name
        org-review-next-timestamp-format
-       (format-time-string (car org-time-stamp-formats)
-			   (org-review-last-planned 
-			    ts
-			    (or (org-review-review-delay-prop
-				 (if (equal (buffer-name) org-agenda-buffer-name)
-				     (or (org-get-at-bol 'org-marker)
-					 (org-agenda-error))
-				   (point)))
-				org-review-delay)))))))
+       (format-time-string
+        (car org-time-stamp-formats)
+        (org-review-last-planned
+         ts
+         (or (org-review-review-delay-prop
+              (if (equal major-mode 'org-agenda-mode)
+                  (or (org-get-at-bol 'org-marker)
+                      (org-agenda-error))
+                (point)))
+             org-review-delay)))))))
 
 (defun org-review-insert-next-review ()
   "Prompt the user for the date of the next review, and insert
