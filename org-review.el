@@ -192,6 +192,7 @@ specified by FMT."
     ((eq fmt 'active) date)
     (t (substring date 1 -1)))))
 
+;;;###autoload
 (defun org-review-insert-last-review (&optional prompt)
   "Insert the current date as last review. If prefix argument:
 prompt the user for the date. If `org-review-sets-next-date' is
@@ -218,6 +219,7 @@ set to `t', also insert a next review date."
                 (point)))
              org-review-delay)))))))
 
+;;;###autoload
 (defun org-review-insert-next-review ()
   "Prompt the user for the date of the next review, and insert
 it as a property of the headline."
