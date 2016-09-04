@@ -3,6 +3,7 @@
 ;; Copyright (C) 2016 Alan Schmitt
 ;;
 ;; Author: Alan Schmitt <alan.schmitt@polytechnique.org>
+;; URL: https://github.com/brabalan/org-review
 ;; Version: 0.3
 ;; Keywords: org review
 
