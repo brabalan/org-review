@@ -139,11 +139,13 @@ subtree above, this delay is used."
         (ct (current-time)))
     (time-add lt (time-subtract (org-read-date nil t delay) ct))))
 
+;;;###autoload
 (defun org-review-last-review-prop (&optional pos)
   "Return the value of the last review property of the headline
 at position POS, or the current headline if POS is not given."
   (org-entry-get (or pos (point)) org-review-last-property-name))
 
+;;;###autoload
 (defun org-review-next-review-prop (&optional pos)
   "Return the value of the review date property of the headline
 at position POS, or the current headline if POS is not given."
@@ -233,6 +235,7 @@ it as a property of the headline."
 			    org-review-next-timestamp-format
 			    ts)))
 
+;;;###autoload
 (defun org-review-agenda-skip ()
   "To be used as an argument of `org-agenda-skip-function' to
 skip entries that are not scheduled to be reviewed. This function
