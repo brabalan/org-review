@@ -2,6 +2,8 @@
 
 Track when you have done a review in org mode.
 
+Tasks typically have Scheduled and Deadline time stamps, which define when the task has to be done. Org-review lets you attach an additional review time stamp to a task, which can be used to schedule a review of the task.
+
 * Installation
 
 1. Copy ~org-review.el~ to a path known to emacs.
