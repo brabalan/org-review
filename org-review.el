@@ -124,8 +124,8 @@ subtree above, this delay is used."
 
 (defcustom org-review-sets-next-date t
   "Indicates whether marking a project as reviewed automatically
-  sets the next NEXT_REVIEW according to the current date and
-  REVIEW_DELAY."
+sets the next NEXT_REVIEW according to the current date and
+REVIEW_DELAY."
   :type 'boolean
   :group 'org-review)
 
@@ -133,8 +133,8 @@ subtree above, this delay is used."
 
 (defun org-review-last-planned (last delay)
   "Computes the next planned review, given the LAST review
-  date (in string format) and the review DELAY (in string
-  format)."
+date (in string format) and the review DELAY (in string
+format)."
   (let ((lt (org-read-date nil t last))
         (ct (current-time)))
     (time-add lt (time-subtract (org-read-date nil t delay) ct))))
@@ -202,10 +202,10 @@ specified by FMT."
 (defun org-review-insert-last-review (&optional prompt)
   "Insert the current date as last review. If prefix argument:
 prompt the user for the date. If `org-review-sets-next-date' is
-set to `t', also insert a next review date."
+set to t, also insert a next review date."
   (interactive "P")
   (let ((ts (if prompt
-                (concat "<" (org-read-date) ">")
+                (format-time-string (car org-time-stamp-formats) (org-read-date nil t))
               (format-time-string (car org-time-stamp-formats)))))
     (org-review-insert-date org-review-last-property-name
 			    org-review-last-timestamp-format
@@ -230,7 +230,7 @@ set to `t', also insert a next review date."
   "Prompt the user for the date of the next review, and insert
 it as a property of the headline."
   (interactive)
-  (let ((ts (concat "<" (org-read-date) ">")))
+  (let ((ts (format-time-string (car org-time-stamp-formats) (org-read-date nil t))))
     (org-review-insert-date org-review-next-property-name
 			    org-review-next-timestamp-format
 			    ts)))
@@ -239,7 +239,7 @@ it as a property of the headline."
 (defun org-review-agenda-skip ()
   "To be used as an argument of `org-agenda-skip-function' to
 skip entries that are not scheduled to be reviewed. This function
-does not move the point; it returns `nil' if the entry is to be
+does not move the point; it returns nil if the entry is to be
 kept, and the position to continue the search otherwise."
   (and (not (org-review-toreview-p))
        (org-with-wide-buffer (or (outline-next-heading) (point-max)))))
