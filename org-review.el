@@ -194,9 +194,10 @@ specified by FMT."
    propname
    (cond
     ((eq fmt 'inactive)
-     (concat "[" (substring date 1 -1) "]"))
-    ((eq fmt 'active) date)
-    (t (substring date 1 -1)))))
+     (concat "[" date "]"))
+    ((eq fmt 'active)
+     (concat "<" date ">"))
+    (t date))))
 
 ;;;###autoload
 (defun org-review-insert-last-review (&optional prompt)
