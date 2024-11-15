@@ -1,11 +1,11 @@
-;;; org-review.el --- schedule reviews for Org entries
+;;; org-review.el --- Schedule reviews for Org entries
 ;;
-;; Copyright (C) 2016 Alan Schmitt
+;; Copyright (C) 2024 Alan Schmitt
 ;;
 ;; Author: Alan Schmitt <alan.schmitt@polytechnique.org>
 ;; URL: https://github.com/brabalan/org-review
 ;; Version: 0.3
-;; Keywords: org review
+;; Keywords: calendar
 
 ;; This file is not part of GNU Emacs.
 
@@ -65,6 +65,7 @@
 
 ;;; Changes
 ;;
+;; 2022-04-11: systematically insert name of week day in date
 ;; 2016-08-18: better detection of org-agenda buffers
 ;; 2014-05-08: added the ability to specify next review dates
 

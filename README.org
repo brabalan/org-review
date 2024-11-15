@@ -6,14 +6,19 @@ Tasks typically have Scheduled and Deadline time stamps, which define when the t
 
 * Installation
 
-1. Copy ~org-review.el~ to a path known to emacs.
-2. Add the following to your emacs configuration file.
+*TLDR* This is what I use in my [[https://github.com/progfolio/elpaca][elpaca]] configuration.
+#+begin_src emacs-lisp
+  (use-package org-review
+    :ensure (:fetcher github :repo "brabalan/org-review")
+    :bind (:map org-agenda-mode-map
+                ("C-c C-r" . org-review-insert-last-review)))
+#+end_src
+
+1. Copy ~org-review.el~ to a path known to emacs and add the following to your emacs configuration file.
    #+begin_src emacs-lisp
      (require 'org-review)
    #+end_src
-3. Configure an agenda view that shows the projects that are available
-   for review. You could for instance add the following in your emacs
-   configuration file.
+2. Configure an agenda view that shows the projects that are available for review. You could for instance add the following in your emacs configuration file.
    #+begin_src emacs-lisp
      (setq org-agenda-custom-commands
            '(("R" "Review projects" tags-todo "-CANCELLED/"
@@ -22,9 +27,7 @@ Tasks typically have Scheduled and Deadline time stamps, which define when the t
                (org-agenda-cmp-user-defined 'org-review-compare)
                (org-agenda-sorting-strategy '(user-defined-down))))))
    #+end_src
-4. If you want to mark a project reviewed when you are in an agenda
-   view, you can do so by assigning a key binding for
-   the ~org-review-insert-last-review~ function.
+3. If you want to mark a project reviewed when you are in an agenda view, you can do so by assigning a key binding for the ~org-review-insert-last-review~ function.
    #+begin_src emacs-lisp
      (add-hook 'org-agenda-mode-hook
                (lambda ()
