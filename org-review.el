@@ -65,6 +65,7 @@
 
 ;;; Changes
 ;;
+;; 2025-04-14: add `org-review-unreviewed' to review never reviewed entries
 ;; 2022-04-11: systematically insert name of week day in date
 ;; 2016-08-18: better detection of org-agenda buffers
 ;; 2014-05-08: added the ability to specify next review dates
@@ -130,6 +131,12 @@ REVIEW_DELAY."
   :type 'boolean
   :group 'org-review)
 
+(defcustom org-review-unreviewed nil
+  "Indicates whether an unreviewed entry (with neither LAST_REVIEW nor
+NEXT_REVIEW properties) should be reviewed."
+  :type 'boolean
+  :group 'org-review)
+
 ;;; Functions:
 
 (defun org-review-last-planned (last delay)
@@ -169,7 +176,7 @@ is a last review date, use it to compute the date of the next
 review (adding the value of the review delay property, or
 `org-review-delay' if there is no review delay property). If
 there is no next review date and no last review date, return
-nil."
+the value of `org-review-unreviewed'."
   (let* ((lp (org-review-last-review-prop pos))
 	 (np (org-review-next-review-prop pos))
 	 (nextreview
@@ -179,10 +186,10 @@ nil."
 		lp
 		(or (org-review-review-delay-prop pos)
 		    org-review-delay)))
-	   (t nil))))
+	   (t (when org-review-unreviewed 0)))))
     (and nextreview
 	 (time-less-p nextreview (current-time))
-	 nextreview)))
+         nextreview)))
 
 (defun org-review-insert-date (propname fmt date)
   "Insert the DATE under property PROPNAME, in the format
