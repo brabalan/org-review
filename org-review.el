@@ -1,10 +1,10 @@
 ;;; org-review.el --- Schedule reviews for Org entries
 ;;
-;; Copyright (C) 2024 Alan Schmitt
+;; Copyright (C) 2025 Alan Schmitt
 ;;
 ;; Author: Alan Schmitt <alan.schmitt@polytechnique.org>
 ;; URL: https://github.com/brabalan/org-review
-;; Version: 0.3
+;; Version: 0.4
 ;; Keywords: calendar
 
 ;; This file is not part of GNU Emacs.
@@ -43,9 +43,12 @@
 ;;
 ;; To mark an entry as reviewed, use the function
 ;; `org-review-insert-last-review' to set the LAST_REVIEW date to the
-;; current date. If `org-review-sets-next-date' is set (which is the
-;; default), this function also computes the date of the next review
-;; and inserts it as NEXT_REVIEW.
+;; current date. If `org-review-sets-next-date' is set to t (which is
+;; the default), this function also computes the date of the next
+;; review and inserts it as NEXT_REVIEW. If
+;; `org-review-sets-next-date' is set to 'only-future, this computed
+;; next review date is inserted only if it is after the current next
+;; review date.
 ;;
 ;; Example use.
 ;;
@@ -65,6 +68,7 @@
 
 ;;; Changes
 ;;
+;; 2025-04-16: expand `org-review-sets-next-date' with 'only-future option
 ;; 2025-04-14: add `org-review-unreviewed' to review never reviewed entries
 ;; 2022-04-11: systematically insert name of week day in date
 ;; 2016-08-18: better detection of org-agenda buffers
@@ -128,7 +132,9 @@ subtree above, this delay is used."
   "Indicates whether marking a project as reviewed automatically
 sets the next NEXT_REVIEW according to the current date and
 REVIEW_DELAY."
-  :type 'boolean
+  :type '(radio (const :tag "Always insert next review date" t)
+                (const :tag "Only insert next review date if after current next review date" only-future)
+                (const :tag "Never insert next review date" nil))
   :group 'org-review)
 
 (defcustom org-review-unreviewed nil
@@ -207,11 +213,30 @@ specified by FMT."
      (concat "<" date ">"))
     (t date))))
 
+(defun org-review-get-prop (propname)
+  "Return the value of property PROPNAME in both org-mode and
+org-agenda-mode."
+  (org-entry-get
+   (if (equal major-mode 'org-agenda-mode)
+       (or (org-get-at-bol 'org-marker)
+	   (org-agenda-error))
+     (point))
+   propname))
+
+(defun org-review-get-date (propname)
+  "Return the date associated to the property PROPNAME, and 0 if there is
+no such property."
+  (let ((prop-date (org-review-get-prop propname)))
+    (if prop-date (org-read-date nil t prop-date)
+      0)))
+
 ;;;###autoload
 (defun org-review-insert-last-review (&optional prompt)
   "Insert the current date as last review. If prefix argument:
-prompt the user for the date. If `org-review-sets-next-date' is
-set to t, also insert a next review date."
+prompt the user for the date. If `org-review-sets-next-date' is set to
+t, insert a next review date. If `org-review-sets-next-date' is set to
+'only-future, insert a next review date only if it is in the future of
+the current next review date."
   (interactive "P")
   (let ((ts (if prompt
                 (format-time-string (car org-time-stamp-formats) (org-read-date nil t))
@@ -219,20 +244,26 @@ set to t, also insert a next review date."
     (org-review-insert-date org-review-last-property-name
 			    org-review-last-timestamp-format
 			    ts)
-    (when org-review-sets-next-date
-      (org-review-insert-date
-       org-review-next-property-name
-       org-review-next-timestamp-format
-       (format-time-string
-        (car org-time-stamp-formats)
-        (org-review-last-planned
-         ts
-         (or (org-review-review-delay-prop
-              (if (equal major-mode 'org-agenda-mode)
-                  (or (org-get-at-bol 'org-marker)
-                      (org-agenda-error))
-                (point)))
-             org-review-delay)))))))
+    (let ((new-next-review-date
+           (org-review-last-planned
+            ts
+            (or (org-review-review-delay-prop
+                 (if (equal major-mode 'org-agenda-mode)
+                     (or (org-get-at-bol 'org-marker)
+                         (org-agenda-error))
+                   (point)))
+                org-review-delay))))
+      (when
+          (or (eq org-review-sets-next-date t)
+              (and (eq org-review-sets-next-date 'only-future)
+                   (time-less-p (org-review-get-date org-review-next-property-name)
+                                new-next-review-date)))
+        (org-review-insert-date
+         org-review-next-property-name
+         org-review-next-timestamp-format
+         (format-time-string
+          (car org-time-stamp-formats)
+          new-next-review-date))))))
 
 ;;;###autoload
 (defun org-review-insert-next-review ()
